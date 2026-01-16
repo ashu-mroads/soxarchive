@@ -85,6 +85,10 @@ public final class App {
             S3CheckpointStore s3CheckpointStore = new S3CheckpointStore(config.getS3CheckpointBucketName());
             
             for (Integration integration : integrations) {
+            	if(!integration.getId().contentEquals("IC-01-INT03-1-INT04")) {
+					log.info("Skipping integration {} as it is not supported", integration.getId());
+					continue;
+				}
             	BizeventsClient bizeventsClient = new BizeventsClient(config, oauthClient);
                 futures.add(
                         executor.submit(() -> {

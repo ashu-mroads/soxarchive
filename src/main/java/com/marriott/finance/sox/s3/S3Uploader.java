@@ -1,11 +1,17 @@
 package com.marriott.finance.sox.s3;
 
 import com.marriott.finance.sox.model.Integration;
+
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.File;
+import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -16,7 +22,19 @@ public final class S3Uploader {
     private final String bucket;
 
     public S3Uploader(String bucket) {
-        this.s3Client = S3Client.builder().build();
+    	
+    	this.s3Client = S3Client.builder()
+        .endpointOverride(URI.create("http://localhost:4566"))
+        .serviceConfiguration(S3Configuration.builder()
+                .pathStyleAccessEnabled(true)
+                .build())
+        .region(Region.US_EAST_1)
+        .credentialsProvider(
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("test", "test")
+            )
+        )
+        .build();
         this.bucket = bucket;
     }
 

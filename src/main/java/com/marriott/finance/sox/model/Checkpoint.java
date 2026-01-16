@@ -1,4 +1,5 @@
 package com.marriott.finance.sox.model;
+import java.time.Duration;
 import java.time.Instant;
 
 /**
@@ -16,7 +17,7 @@ public record Checkpoint(
     public static Checkpoint initial(String integrationId) {
         return new Checkpoint(
                 integrationId,
-                Instant.EPOCH,
+                Instant.now().minus(Duration.ofDays(1)),
                 Instant.now()
         );
     }

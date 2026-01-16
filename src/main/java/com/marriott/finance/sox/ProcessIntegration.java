@@ -24,7 +24,7 @@ public final class ProcessIntegration {
 
     private static final int PAGE_SIZE = 1000;
     private static final int HOURS_PER_WINDOW = 1;
-    private static final int INITIALIZE_DAYS = 30;
+    private static final int INITIALIZE_DAYS = 1;
 
     private ProcessIntegration() {
         // utility class
@@ -50,19 +50,9 @@ public final class ProcessIntegration {
             Instant windowEnd =
                     windowStart.plus(Duration.ofHours(HOURS_PER_WINDOW));
 
-            log.info(
-                "[{}] Processing window {} -> {}",
-                integration.getId(),
-                windowStart,
-                windowEnd
-            );
+            log.info( "[{}] Processing window {} -> {}",  integration.getId(), windowStart, windowEnd  );
 
-            int totalCount =
-                    bizeventsClient.getCount(
-                            integration,
-                            windowStart,
-                            windowEnd
-                    );
+            int totalCount = bizeventsClient.getCount( integration, windowStart, windowEnd );
 
             if (totalCount == 0) {
                 log.info("[{}] No records in window", integration.getId());
@@ -86,12 +76,6 @@ public final class ProcessIntegration {
                 Instant nextPageStart = windowStart;
 
                 while (true) {
-                	
-                	int count = bizeventsClient.getCount(integration, nextPageStart, windowEnd);
-                	if (count == 0) {
-						break;
-					}
-                	
                     BizeventsResponse response =
                             bizeventsClient.getData(
                                     integration,
@@ -110,12 +94,14 @@ public final class ProcessIntegration {
                         zos.write(event.toString().getBytes());
                         zos.write('\n');
                         wroteData = true;
-                    }
-
-                    nextPageStart = response.nextPageStartTime();
-                    if (nextPageStart == null) {
-                        break;
-                    }
+                    }                    
+                    nextPageStart = response.nextPageStartTime().plus(Duration.ofMillis(1));
+                    
+                    totalCount = bizeventsClient.getCount( integration, windowStart, nextPageStart );
+                    if(totalCount == 0) {
+						break;
+					}
+                    
                 }
 
                 zos.closeEntry();

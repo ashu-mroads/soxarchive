@@ -2,16 +2,23 @@
 package com.marriott.finance.sox.s3;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import com.marriott.finance.sox.model.Checkpoint;
 import com.marriott.finance.sox.model.CheckpointStore;
 
-
+import java.net.URI;
 import java.time.Instant;
 
 /**
@@ -29,8 +36,21 @@ public final class S3CheckpointStore implements CheckpointStore {
     private final String bucket;
 
     public S3CheckpointStore(String bucket) {
-        this.s3Client = S3Client.builder().build();
+    	this.s3Client = S3Client.builder()
+    	        .endpointOverride(URI.create("http://localhost:4566"))
+    	        .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
+    	        .region(Region.US_EAST_1)
+    	        .credentialsProvider(
+    	            StaticCredentialsProvider.create(
+    	                AwsBasicCredentials.create("test", "test")
+    	            )
+    	        )
+    	        .build();
         this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         this.bucket = bucket;
     }
 

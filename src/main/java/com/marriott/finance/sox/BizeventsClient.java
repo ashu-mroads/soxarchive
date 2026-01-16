@@ -15,6 +15,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -64,8 +66,11 @@ public final class BizeventsClient {
 		String dql = buildCountDql(integration, from, to);
     	
 		JsonNode resultNode = runDqlWithPolling(dql);
+		int count = parseCountResult(resultNode);
 		
-		return parseCountResult(resultNode);
+		log.info("Count result for integration " + integration.getId() + " from " + from.toString() + " to " + to.toString() + " is: " + count);
+		
+		return count;
     	
     }
 
@@ -145,7 +150,7 @@ public final class BizeventsClient {
                         HttpResponse.BodyHandlers.ofString()
                 );
         
-    	log.debug("Executed DQL query, received status: " + response.statusCode() + ", body: " + response.body());
+    	//log.debug("Executed DQL query, received status: " + response.statusCode() + ", body: " + response.body());
 
     	
 
@@ -174,7 +179,7 @@ public final class BizeventsClient {
         JsonNode result;
         JsonNode records;
 
-        log.info("Polling DQL with requestToken: " + requestToken);
+    //    log.info("Polling DQL with requestToken: " + requestToken);
         
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(pollURI)
@@ -198,7 +203,7 @@ public final class BizeventsClient {
         	records = result.path("result").path("records");
         	int recordCount = records.size();
         	String query = result.path("result").path("metadata").path("grail").path("query").asText();        	
-        	log.debug("Polled DQL query, received status: " + response.statusCode() + ", recordCount : " + recordCount + ", query: " + query);        	
+        //	log.debug("Polled DQL query, received status: " + response.statusCode() + ", recordCount : " + recordCount + ", query: " + query);        	
         }
 
         if (response.statusCode() >= 300) {
@@ -214,20 +219,38 @@ public final class BizeventsClient {
         return result;
     }
 
-    public BizeventsResponse parseDataResult(JsonNode node)
-            throws Exception {
-    	
-        JsonNode result = node.path("result");
-        if (result.isMissingNode()) {
+    public BizeventsResponse parseDataResult(JsonNode node) {
+
+        JsonNode resultNode = node.path("result");
+        if (resultNode.isMissingNode()) {
             throw new IllegalStateException(
-                    "DQL SUCCEEDED but result was missing"
+                    "DQL response missing 'result' node"
             );
         }
-        return objectMapper.treeToValue(
-                result,
-                BizeventsResponse.class
-        );
+
+        JsonNode recordsNode = resultNode.path("records");
+        if (!recordsNode.isArray()) {
+            throw new IllegalStateException(
+                    "DQL result.records is missing or not an array"
+            );
+        }
+
+        List<JsonNode> events = new ArrayList<>();
+        recordsNode.forEach(events::add);
+
+        Instant nextPageStartTime = null;
+
+        if (!events.isEmpty()) {
+            JsonNode lastEvent = events.get(events.size() - 1);
+            if (lastEvent.has("timestamp") && lastEvent.get("timestamp").isTextual()) {
+                nextPageStartTime =
+                        Instant.parse(lastEvent.get("timestamp").asText());
+            } 
+        }
+
+        return new BizeventsResponse(events, nextPageStartTime);
     }
+
     
     public int parseCountResult(JsonNode node)
             throws Exception {
@@ -264,7 +287,7 @@ public final class BizeventsClient {
                 + integration.getDestination().toLowerCase()
                 + "\" | limit " + pageSize +  " | sort timestamp asc ";
         
-        log.debug("Built DQL: " + dql);        
+     //   log.debug("Built DQL: " + dql);        
         return dql;
     }
     
@@ -286,7 +309,7 @@ public final class BizeventsClient {
                 + integration.getDestination().toLowerCase()
                 + "\" | summarize count = count()";
         
-        log.debug("Built DQL: " + dql);        
+     //   log.debug("Built DQL: " + dql);        
         return dql;
     }
 
