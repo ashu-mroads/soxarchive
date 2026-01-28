@@ -25,6 +25,7 @@ public final class ProcessIntegration {
     private static final int PAGE_SIZE = 1000;
     private static final int HOURS_PER_WINDOW = 1;
     private static final int INITIALIZE_DAYS = 1;
+    private static final long MAX_ZIP_BYTES = 1L * 1024 * 1024 * 1024; // 1GB
 
     private ProcessIntegration() {
         // utility class
@@ -37,13 +38,13 @@ public final class ProcessIntegration {
             Integration integration
     ) throws Exception {
 
-    	Instant windowStart = Instant.now().minus(Duration.ofDays(INITIALIZE_DAYS));
+        Instant windowStart = Instant.now().minus(Duration.ofDays(INITIALIZE_DAYS));
         Instant now = Instant.now();
         Checkpoint checkpoint =
                 checkpointStore.load(integration.getId());
         if (checkpoint != null) {
-			windowStart = checkpoint.lastProcessedTimestamp();
-		}
+            windowStart = checkpoint.lastProcessedTimestamp();
+        }
 
         while (windowStart.isBefore(now)) {
 
@@ -60,18 +61,20 @@ public final class ProcessIntegration {
                 continue;
             }
 
-            File zipFile = File.createTempFile(
-                    "bizevents-" + integration.getId() + "-",
-                    ".zip"
-            );
-
             boolean wroteData = false;
 
-            try (ZipOutputStream zos =
-                         new ZipOutputStream(
-                                 new FileOutputStream(zipFile))) {
+            File currentZipFile = null;
+            ZipOutputStream zos = null;
+            int partIndex = 1;
 
-                zos.putNextEntry(new ZipEntry("events.jsonl"));
+            try {
+                // create initial zip/entry
+                currentZipFile = File.createTempFile(
+                        "bizevents-" + integration.getId() + "-part" + partIndex + "-",
+                        ".zip"
+                );
+                zos = new ZipOutputStream(new FileOutputStream(currentZipFile));
+                zos.putNextEntry(new ZipEntry(integration.getId() + "_events.jsonl"));
 
                 Instant nextPageStart = windowStart;
 
@@ -91,53 +94,100 @@ public final class ProcessIntegration {
                     }
 
                     for (JsonNode event : response.events()) {
-                        zos.write(event.toString().getBytes());
+                        byte[] bytes = event.toString().getBytes();
+                        zos.write(bytes);
                         zos.write('\n');
                         wroteData = true;
-                    }                    
+
+                        zos.flush();
+                        // check size and roll if exceeds limit
+                        if (currentZipFile.length() >= MAX_ZIP_BYTES) {
+                            // close current zip entry and stream
+                            zos.closeEntry();
+                            zos.close();
+
+                            // upload rolled file if it has data
+                            if (currentZipFile.length() > 0) {
+                                s3Uploader.uploadZip(integration, currentZipFile, windowStart);
+                                log.info("[{}] Uploaded rolled part {} ({} bytes)", integration.getId(), partIndex, currentZipFile.length());
+                            }
+
+                            Files.deleteIfExists(currentZipFile.toPath());
+
+                            // prepare next part
+                            partIndex++;
+                            currentZipFile = File.createTempFile(
+                                    "bizevents-" + integration.getId() + "-part" + partIndex + "-",
+                                    ".zip"
+                            );
+                            zos = new ZipOutputStream(new FileOutputStream(currentZipFile));
+                            zos.putNextEntry(new ZipEntry(integration.getId() + "_events.jsonl"));
+                        }
+                    }
+
                     nextPageStart = response.nextPageStartTime().plus(Duration.ofMillis(1));
-                    
+
                     totalCount = bizeventsClient.getCount( integration, windowStart, nextPageStart );
                     if(totalCount == 0) {
-						break;
-					}
-                    
+                        break;
+                    }
+
                 }
 
-                zos.closeEntry();
+                // close last entry/stream for the current part
+                if (zos != null) {
+                    zos.closeEntry();
+                    zos.close();
+                    zos = null;
+                }
+
+                // upload last part if it contains data
+                if (currentZipFile != null && currentZipFile.length() > 0) {
+                    s3Uploader.uploadZip(integration, currentZipFile, windowStart);
+                    log.info("[{}] Uploaded final part {} ({} bytes)", integration.getId(), partIndex, currentZipFile.length());
+                    Files.deleteIfExists(currentZipFile.toPath());
+                }
+
+                if (wroteData) {
+                    checkpointStore.save(
+                            new Checkpoint(
+                                    integration.getId(),
+                                    windowEnd,
+                                    Instant.now()
+                            )
+                    );
+
+                    log.info(
+                            "[{}] Window {} -> {} archived and checkpoint updated",
+                            integration.getId(),
+                            windowStart,
+                            windowEnd
+                    );
+                } else {
+                    log.info(
+                            "[{}] No data written for window {} -> {}",
+                            integration.getId(),
+                            windowStart,
+                            windowEnd
+                    );
+                }
+
+            } finally {
+                // ensure streams/files cleaned up if an exception occurred
+                try {
+                    if (zos != null) {
+                        try { zos.closeEntry(); } catch (Exception ignored) {}
+                        try { zos.close(); } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {}
+
+                if (currentZipFile != null) {
+                    try {
+                        Files.deleteIfExists(currentZipFile.toPath());
+                    } catch (Exception ignored) {}
+                }
             }
 
-            if (wroteData) {
-                s3Uploader.uploadZip(
-                        integration,
-                        zipFile,
-                        windowStart
-                );
-
-                checkpointStore.save(
-                        new Checkpoint(
-                                integration.getId(),
-                                windowEnd,
-                                Instant.now()
-                        )
-                );
-
-                log.info(
-                    "[{}] Window {} -> {} archived and checkpoint updated",
-                    integration.getId(),
-                    windowStart,
-                    windowEnd
-                );
-            } else {
-                log.info(
-                    "[{}] No data written for window {} -> {}",
-                    integration.getId(),
-                    windowStart,
-                    windowEnd
-                );
-            }
-
-            Files.deleteIfExists(zipFile.toPath());
             windowStart = windowEnd;
         }
     }

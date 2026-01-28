@@ -1,10 +1,7 @@
-// Java
+// java
 package com.marriott.finance.sox.config;
 
-import java.time.Duration;
 import java.util.Objects;
-
-import com.marriott.finance.sox.model.CheckpointStore;
 
 public final class AppConfig {
 
@@ -20,10 +17,15 @@ public final class AppConfig {
     private final long requestTimeoutMillis;
 
     private final int pageSize;
-   
+
     private final String S3DataBucketName;
     private final String S3CheckpointBucketName;
-    
+    private final String tempLocalDir;
+    private final int timeWaitAfterUploadSecs;
+    private final int maxTaskDurationHours;
+    private final boolean useLocalstack;
+    private final String s3Endpoint;
+    private final String awsRegion;
 
     public AppConfig(
             String tenantName,
@@ -36,9 +38,14 @@ public final class AppConfig {
             long requestTimeoutMillis,
             int pageSize,
             String S3DataBucketName,
-            String S3CheckpointBucketName
+            String S3CheckpointBucketName,
+            String tempLocalDir,
+            int timeWaitAfterUploadSecs,
+            int maxTaskDurationHours,
+            boolean useLocalstack, 
+            String s3Endpoint, 
+            String awsRegion
     ) {
-
         this.tenantName = require(tenantName, "tenantName");
 
         this.oauthTokenUrl = require(oauthTokenUrl, "oauthTokenUrl");
@@ -50,7 +57,13 @@ public final class AppConfig {
         this.requestTimeoutMillis = requestTimeoutMillis;
         this.pageSize = pageSize;
         this.S3DataBucketName = require(S3DataBucketName, "S3DataBucketName");
-        this.S3CheckpointBucketName = require(S3CheckpointBucketName, "S3CheckpointBucketName");        
+        this.S3CheckpointBucketName = require(S3CheckpointBucketName, "S3CheckpointBucketName");
+        this.tempLocalDir = require(tempLocalDir, "tempLocalDir");
+        this.timeWaitAfterUploadSecs = timeWaitAfterUploadSecs;
+        this.maxTaskDurationHours = maxTaskDurationHours;
+        this.useLocalstack = useLocalstack;
+        this.s3Endpoint = s3Endpoint;
+        this.awsRegion = require(awsRegion, "awsRegion");
     }
 
     private static <T> T require(T value, String name) {
@@ -60,8 +73,6 @@ public final class AppConfig {
     public String tenantName() {
         return tenantName;
     }
-
-
 
     public String oauthTokenUrl() {
         return oauthTokenUrl;
@@ -91,13 +102,38 @@ public final class AppConfig {
         return pageSize;
     }
 
-	public String oauthResourceURN() {
-		return oauthResourceURN;
+    public String oauthResourceURN() {
+        return oauthResourceURN;
+    }
+
+    public String getS3DataBucketName() {
+        return S3DataBucketName;
+    }
+
+    public String getS3CheckpointBucketName() {
+        return S3CheckpointBucketName;
+    }
+
+    public String getTempLocalDir() {
+        return tempLocalDir;
+    }
+
+    public int getTimeWaitAfterUploadSecs() {
+        return timeWaitAfterUploadSecs;
+    }
+
+    public int getMaxTaskDurationHours() {
+        return maxTaskDurationHours;
+    }
+    public boolean useLocalstack() {
+		return useLocalstack;
 	}
-	public String getS3DataBucketName() {
-		return S3DataBucketName;
+    public String s3Endpoint() {
+		return s3Endpoint;
 	}
-	public String getS3CheckpointBucketName() {
-		return S3CheckpointBucketName;
+    public String awsRegion() {
+		return awsRegion;
 	}
+
+
 }

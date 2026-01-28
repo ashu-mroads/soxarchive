@@ -1,57 +1,65 @@
-
+// java
 package com.marriott.finance.sox.s3;
 
+import java.net.URI;
+import java.time.Instant;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.marriott.finance.sox.config.AppConfig;
+import com.marriott.finance.sox.model.Checkpoint;
+import com.marriott.finance.sox.model.CheckpointStore;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import com.marriott.finance.sox.model.Checkpoint;
-import com.marriott.finance.sox.model.CheckpointStore;
 
-import java.net.URI;
-import java.time.Instant;
-
-/**
- * S3-backed checkpoint store.
- *
- * Path format:
- *   checkpoints/integration=<integration-id>/checkpoint.json
- */
 public final class S3CheckpointStore implements CheckpointStore {
 
-    private static final String ROOT_PREFIX = "checkpoints";
-
+	private static final String ROOT_PREFIX = "checkpoints";
     private final S3Client s3Client;
-    private final ObjectMapper objectMapper;
     private final String bucket;
+    private final ObjectMapper objectMapper;
+    
+    public S3CheckpointStore(AppConfig config) {
+        this.bucket = config.getS3CheckpointBucketName();
 
-    public S3CheckpointStore(String bucket) {
-    	this.s3Client = S3Client.builder()
-    	        .endpointOverride(URI.create("http://localhost:4566"))
-    	        .serviceConfiguration(S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-    	        .region(Region.US_EAST_1)
-    	        .credentialsProvider(
-    	            StaticCredentialsProvider.create(
-    	                AwsBasicCredentials.create("test", "test")
-    	            )
-    	        )
-    	        .build();
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.registerModule(new JavaTimeModule());
-        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        this.bucket = bucket;
+        Region region = Region.of(config.awsRegion());
+        S3ClientBuilder builder = S3Client.builder().region(region);
+
+        if (config.useLocalstack()) {
+            builder = builder
+                    .endpointOverride(URI.create(config.s3Endpoint()))
+                    .serviceConfiguration(S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build())
+                    .credentialsProvider(
+                            StaticCredentialsProvider.create(
+                                    AwsBasicCredentials.create("test", "test")
+                            )
+                    );
+        } else if (config.s3Endpoint() != null && !config.s3Endpoint().isEmpty()) {
+            builder = builder
+                    .endpointOverride(URI.create(config.s3Endpoint()))
+                    .serviceConfiguration(S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build())
+                    .credentialsProvider(DefaultCredentialsProvider.create());
+        } else {
+            builder = builder.credentialsProvider(DefaultCredentialsProvider.create());
+        }
+
+        this.s3Client = builder.build();
+        this.objectMapper = new ObjectMapper()
+				.findAndRegisterModules();
     }
 
     @Override

@@ -6,9 +6,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.marriott.finance.sox.auth.DynatraceOAuthClient;
 import com.marriott.finance.sox.config.AppConfig;
 import com.marriott.finance.sox.config.EnvConfigLoader;
-import com.marriott.finance.sox.model.BizeventsResponse;
-import com.marriott.finance.sox.model.Checkpoint;
-import com.marriott.finance.sox.model.CheckpointStore;
 import com.marriott.finance.sox.model.Integration;
 import com.marriott.finance.sox.model.Integrations;
 import com.marriott.finance.sox.s3.S3CheckpointStore;
@@ -17,8 +14,6 @@ import com.marriott.finance.sox.s3.S3Uploader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -31,11 +26,6 @@ public final class App {
 
     private static final Logger log = LoggerFactory.getLogger(App.class);
     private static final int MAX_PARALLEL_EXECUTIONS = 4;
-    
-    private static final int EXECUTER_TERMINATION = 15; // minutes
-    
-    private static final int BATCH_SIZE = 5000;
-    
 
     public static void main(String[] args) {
         log.info("Starting Dynatrace Bizevents Exporter");
@@ -51,7 +41,6 @@ public final class App {
                             config.oauthResourceURN()
                     );
 
-            // stringify config to JSON for clearer logging, fallback to toString()
             String configStr;
             try {
                 ObjectMapper mapper = new ObjectMapper()
@@ -63,8 +52,6 @@ public final class App {
             }
 
             log.info("Loaded configuration: {}", configStr);
-
-            
 
             List<Integration> integrations = Integrations.getAllIntegrations();
             if (integrations == null || integrations.isEmpty()) {
@@ -79,17 +66,12 @@ public final class App {
             ExecutorService executor = Executors.newFixedThreadPool(poolSize);
             List<Future<?>> futures = new ArrayList<>(integrations.size());
             AtomicBoolean hadFailure = new AtomicBoolean(false);
-            
-                        
-            S3Uploader s3Uploader = new S3Uploader(config.getS3DataBucketName());
-            S3CheckpointStore s3CheckpointStore = new S3CheckpointStore(config.getS3CheckpointBucketName());
-            
-            for (Integration integration : integrations) {
-            	if(!integration.getId().contentEquals("IC-01-INT03-1-INT04")) {
-					log.info("Skipping integration {} as it is not supported", integration.getId());
-					continue;
-				}
-            	BizeventsClient bizeventsClient = new BizeventsClient(config, oauthClient);
+
+            S3Uploader s3Uploader = new S3Uploader(config);
+            S3CheckpointStore s3CheckpointStore = new S3CheckpointStore(config);
+
+            for (Integration integration : integrations) {              
+                BizeventsClient bizeventsClient = new BizeventsClient(config, oauthClient);
                 futures.add(
                         executor.submit(() -> {
                             try {
@@ -97,24 +79,14 @@ public final class App {
                             } catch (Exception e) {
                                 hadFailure.set(true);
                                 log.error("[{}] Integration task failed", integration.getId(), e);
-                                throw new RuntimeException(e);
                             }
                         })
                 );
             }
 
-            // no more tasks
             executor.shutdown();
 
-            // wait for tasks with a reasonable timeout
-            boolean finished = executor.awaitTermination(10, TimeUnit.MINUTES);
-            if (!finished) {
-                log.warn("Timeout waiting for integration tasks to finish, attempting shutdownNow");
-                List<Runnable> dropped = executor.shutdownNow();
-                log.warn("shutdownNow returned {} pending tasks", dropped.size());
-                // give a short grace period
-                executor.awaitTermination(EXECUTER_TERMINATION, TimeUnit.MINUTES);
-            }
+            waitForTasksToFinish(config, executor);
 
             // check futures for exceptions that might have been thrown
             for (Future<?> future : futures) {
@@ -124,6 +96,15 @@ public final class App {
                     hadFailure.set(true);
                     log.debug("Future completed exceptionally", e);
                 }
+            }
+
+            // give extra time for logs upload
+            try {
+                log.info("Waiting {} seconds to allow logs to be uploaded to Dynatrace", config.getTimeWaitAfterUploadSecs());
+                TimeUnit.SECONDS.sleep(config.getTimeWaitAfterUploadSecs());
+            } catch (InterruptedException ie) {
+                log.warn("Interrupted while waiting for logs upload", ie);
+                Thread.currentThread().interrupt();
             }
 
             if (hadFailure.get()) {
@@ -140,6 +121,41 @@ public final class App {
         }
     }
 
+    private static void waitForTasksToFinish(AppConfig config, ExecutorService executor) {
+        long totalWaitSecs = TimeUnit.HOURS.toSeconds(config.getMaxTaskDurationHours());
+        long pollIntervalSecs = TimeUnit.MINUTES.toSeconds(5);
+        long waitedSecs = 0L;
+        boolean finished = false;
 
+        while (waitedSecs < totalWaitSecs) {
+            long remaining = totalWaitSecs - waitedSecs;
+            long waitFor = Math.min(pollIntervalSecs, remaining);
+            log.info("Waiting up to {} seconds for integration tasks to finish (total waited {}/{} sec)", waitFor, waitedSecs, totalWaitSecs);
+            try {
+                finished = executor.awaitTermination(waitFor, TimeUnit.SECONDS);
+            } catch (InterruptedException ie) {
+                log.warn("Interrupted while awaiting termination; preserving interrupt status and breaking wait loop", ie);
+                Thread.currentThread().interrupt();
+                break;
+            }
+            waitedSecs += waitFor;
+            log.info("awaitTermination returned {} after waiting {} seconds (total waited {}/{})", finished, waitFor, waitedSecs, totalWaitSecs);
+            if (finished) {
+                break;
+            }
+        }
 
+        if (!finished) {
+            log.warn("Timeout waiting for integration tasks to finish after {} seconds, attempting shutdownNow", totalWaitSecs);
+            List<Runnable> dropped = executor.shutdownNow();
+            log.warn("shutdownNow returned {} pending tasks", dropped.size());
+            try {
+                boolean afterGrace = executor.awaitTermination(config.getTimeWaitAfterUploadSecs(), TimeUnit.SECONDS);
+                log.info("awaitTermination after shutdownNow returned {}", afterGrace);
+            } catch (InterruptedException ie) {
+                log.warn("Interrupted during final awaitTermination after shutdownNow", ie);
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 }
