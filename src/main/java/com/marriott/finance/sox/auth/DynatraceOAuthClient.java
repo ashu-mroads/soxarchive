@@ -1,4 +1,4 @@
-package com.marriott.finance.soxarchive.auth;
+package com.marriott.finance.sox.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

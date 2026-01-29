@@ -1,5 +1,8 @@
 // java
-package com.marriott.finance.soxarchive.s3;
+package com.marriott.finance.sox.s3;
+
+import com.marriott.finance.sox.config.AppConfig;
+import com.marriott.finance.sox.model.Integration;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -16,9 +19,6 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-
-import com.marriott.finance.soxarchive.config.AppConfig;
-import com.marriott.finance.soxarchive.model.Integration;
 
 public final class S3Uploader {
 

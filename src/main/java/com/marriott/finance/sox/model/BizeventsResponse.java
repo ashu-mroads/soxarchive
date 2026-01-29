@@ -1,4 +1,4 @@
-package com.marriott.finance.soxarchive.model;
+package com.marriott.finance.sox.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 

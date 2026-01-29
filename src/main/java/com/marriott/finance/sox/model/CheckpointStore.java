@@ -1,5 +1,5 @@
 
-package com.marriott.finance.soxarchive.model;
+package com.marriott.finance.sox.model;
 
 public interface CheckpointStore {
 

@@ -1,4 +1,4 @@
-package com.marriott.finance.soxarchive.s3;
+package com.marriott.finance.sox.s3;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import com.marriott.finance.soxarchive.model.Integration;
+import com.marriott.finance.sox.model.Integration;
 
 public class ZipFile {
 	
