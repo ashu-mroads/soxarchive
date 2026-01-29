@@ -1,12 +1,13 @@
-package com.marriott.finance.sox;
+package com.marriott.finance.soxarchive;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.marriott.finance.sox.model.Checkpoint;
-import com.marriott.finance.sox.model.CheckpointStore;
-import com.marriott.finance.sox.config.AppConfig;
-import com.marriott.finance.sox.model.BizeventsResponse;
-import com.marriott.finance.sox.model.Integration;
-import com.marriott.finance.sox.s3.S3Uploader;
+import com.marriott.finance.soxarchive.config.AppConfig;
+import com.marriott.finance.soxarchive.model.BizeventsResponse;
+import com.marriott.finance.soxarchive.model.Checkpoint;
+import com.marriott.finance.soxarchive.model.CheckpointStore;
+import com.marriott.finance.soxarchive.model.Integration;
+import com.marriott.finance.soxarchive.s3.S3Uploader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,5 +1,5 @@
 // java
-package com.marriott.finance.sox.config;
+package com.marriott.finance.soxarchive.config;
 
 import java.util.Map;
 

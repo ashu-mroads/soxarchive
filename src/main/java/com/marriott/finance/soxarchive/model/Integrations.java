@@ -1,4 +1,4 @@
-package com.marriott.finance.sox.model;
+package com.marriott.finance.soxarchive.model;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

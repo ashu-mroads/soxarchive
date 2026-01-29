@@ -1,4 +1,4 @@
-package com.marriott.finance.sox.model;
+package com.marriott.finance.soxarchive.model;
 import java.time.Duration;
 import java.time.Instant;
 
