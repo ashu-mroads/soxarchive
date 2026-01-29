@@ -1,13 +1,13 @@
 // java
-package com.marriott.finance.sox.s3;
+package com.marriott.finance.soxarchive.s3;
 
 import java.net.URI;
 import java.time.Instant;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.marriott.finance.sox.config.AppConfig;
-import com.marriott.finance.sox.model.Checkpoint;
-import com.marriott.finance.sox.model.CheckpointStore;
+import com.marriott.finance.soxarchive.config.AppConfig;
+import com.marriott.finance.soxarchive.model.Checkpoint;
+import com.marriott.finance.soxarchive.model.CheckpointStore;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;

@@ -1,12 +1,12 @@
 // java
-package com.marriott.finance.sox;
+package com.marriott.finance.soxarchive;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.marriott.finance.sox.auth.DynatraceOAuthClient;
-import com.marriott.finance.sox.config.AppConfig;
-import com.marriott.finance.sox.model.BizeventsResponse;
-import com.marriott.finance.sox.model.Integration;
+import com.marriott.finance.soxarchive.auth.DynatraceOAuthClient;
+import com.marriott.finance.soxarchive.config.AppConfig;
+import com.marriott.finance.soxarchive.model.BizeventsResponse;
+import com.marriott.finance.soxarchive.model.Integration;
 
 import java.net.URI;
 import java.net.URLEncoder;

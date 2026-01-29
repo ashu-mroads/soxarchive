@@ -1,15 +1,15 @@
 // java
-package com.marriott.finance.sox;
+package com.marriott.finance.soxarchive;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.marriott.finance.sox.auth.DynatraceOAuthClient;
-import com.marriott.finance.sox.config.AppConfig;
-import com.marriott.finance.sox.config.EnvConfigLoader;
-import com.marriott.finance.sox.model.Integration;
-import com.marriott.finance.sox.model.Integrations;
-import com.marriott.finance.sox.s3.S3CheckpointStore;
-import com.marriott.finance.sox.s3.S3Uploader;
+import com.marriott.finance.soxarchive.auth.DynatraceOAuthClient;
+import com.marriott.finance.soxarchive.config.AppConfig;
+import com.marriott.finance.soxarchive.config.EnvConfigLoader;
+import com.marriott.finance.soxarchive.model.Integration;
+import com.marriott.finance.soxarchive.model.Integrations;
+import com.marriott.finance.soxarchive.s3.S3CheckpointStore;
+import com.marriott.finance.soxarchive.s3.S3Uploader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
