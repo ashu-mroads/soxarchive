@@ -75,7 +75,7 @@ public final class App {
                 futures.add(
                         executor.submit(() -> {
                             try {
-                                ProcessIntegration.processIntegration(bizeventsClient, s3CheckpointStore, s3Uploader, integration);
+                                ProcessIntegration.processIntegration(bizeventsClient, s3CheckpointStore, s3Uploader, integration, config);
                             } catch (Exception e) {
                                 hadFailure.set(true);
                                 log.error("[{}] Integration task failed", integration.getId(), e);

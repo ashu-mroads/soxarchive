@@ -3,6 +3,7 @@ package com.marriott.finance.sox;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.marriott.finance.sox.model.Checkpoint;
 import com.marriott.finance.sox.model.CheckpointStore;
+import com.marriott.finance.sox.config.AppConfig;
 import com.marriott.finance.sox.model.BizeventsResponse;
 import com.marriott.finance.sox.model.Integration;
 import com.marriott.finance.sox.s3.S3Uploader;
@@ -14,6 +15,7 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -35,18 +37,21 @@ public final class ProcessIntegration {
             BizeventsClient bizeventsClient,
             CheckpointStore checkpointStore,
             S3Uploader s3Uploader,
-            Integration integration
+            Integration integration,
+            AppConfig config
     ) throws Exception {
 
-        Instant windowStart = Instant.now().minus(Duration.ofDays(INITIALIZE_DAYS));
-        Instant now = Instant.now();
-        Checkpoint checkpoint =
-                checkpointStore.load(integration.getId());
-        if (checkpoint != null) {
-            windowStart = checkpoint.lastProcessedTimestamp();
-        }
-
-        while (windowStart.isBefore(now)) {
+    	Instant windowStart = Instant.now()
+    	        .minus(Duration.ofDays(INITIALIZE_DAYS))
+    	        .truncatedTo(ChronoUnit.HOURS);
+    	Instant now = Instant.now().truncatedTo(ChronoUnit.HOURS);
+    	Checkpoint checkpoint = checkpointStore.load(integration.getId());
+    	if (checkpoint != null) {
+    	    windowStart = checkpoint.lastProcessedTimestamp().truncatedTo(ChronoUnit.HOURS);
+    	}      
+    	
+    	
+        while (windowStart.isBefore( Instant.now().truncatedTo(ChronoUnit.HOURS).minus(1, ChronoUnit.HOURS))) {
 
             Instant windowEnd =
                     windowStart.plus(Duration.ofHours(HOURS_PER_WINDOW));
@@ -69,8 +74,8 @@ public final class ProcessIntegration {
 
             try {
                 // create initial zip/entry
-                currentZipFile = File.createTempFile(
-                        "bizevents-" + integration.getId() + "-part" + partIndex + "-",
+                currentZipFile = File.createTempFile(config.getTempLocalDir() +
+                        "/bizevents-" + integration.getId() + "-part" + partIndex + "-",
                         ".zip"
                 );
                 zos = new ZipOutputStream(new FileOutputStream(currentZipFile));
