@@ -37,6 +37,9 @@ public final class EnvConfigLoader {
         
         String s3Endpoint =  System.getenv("S3_ENDPOINT");
         
+        String assumeArchiveRoleArn = System.getenv("ASSUME_ARCHIVE_ROLE_ARN");
+        String assumeCheckpointRoleArn = System.getenv("ASSUME_CHECKPOINT_ROLE_ARN");
+        
         if(useLocalstack) {
         	s3Endpoint = "http://localhost:4566";
         }
@@ -60,7 +63,9 @@ public final class EnvConfigLoader {
                 maxTaskDurationHours,
                 useLocalstack,
                 s3Endpoint,
-                awsRegion
+                awsRegion,
+                assumeArchiveRoleArn,
+                assumeCheckpointRoleArn
         );
     }
 

@@ -203,7 +203,7 @@ public final class BizeventsClient {
         	records = result.path("result").path("records");
         	int recordCount = records.size();
         	String query = result.path("result").path("metadata").path("grail").path("query").asText();        	
-        //	log.debug("Polled DQL query, received status: " + response.statusCode() + ", recordCount : " + recordCount + ", query: " + query);        	
+        	log.debug("Polled DQL query, received status: " + response.statusCode() + ", recordCount : " + recordCount + ", query: " + query);        	
         }
 
         if (response.statusCode() >= 300) {

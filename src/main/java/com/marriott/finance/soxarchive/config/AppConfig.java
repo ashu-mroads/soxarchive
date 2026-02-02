@@ -26,6 +26,8 @@ public final class AppConfig {
     private final boolean useLocalstack;
     private final String s3Endpoint;
     private final String awsRegion;
+    private final String assumeRolForArchiveArn;
+    private final String assumeRoleCheckpointArn;
 
     public AppConfig(
             String tenantName,
@@ -44,7 +46,9 @@ public final class AppConfig {
             int maxTaskDurationHours,
             boolean useLocalstack, 
             String s3Endpoint, 
-            String awsRegion
+            String awsRegion,
+            String assumeRolForArchiveArn,
+            String assumeRoleCheckpointArn
     ) {
         this.tenantName = require(tenantName, "tenantName");
 
@@ -64,6 +68,8 @@ public final class AppConfig {
         this.useLocalstack = useLocalstack;
         this.s3Endpoint = s3Endpoint;
         this.awsRegion = require(awsRegion, "awsRegion");
+        this.assumeRolForArchiveArn = assumeRolForArchiveArn;
+        this.assumeRoleCheckpointArn = assumeRoleCheckpointArn;
     }
 
     private static <T> T require(T value, String name) {
@@ -133,6 +139,12 @@ public final class AppConfig {
 	}
     public String awsRegion() {
 		return awsRegion;
+	}
+    public String assumeRolearchiveArn() {
+		return assumeRolForArchiveArn;
+	}
+    public String assumeRoleCheckpointArn() {
+		return assumeRoleCheckpointArn;
 	}
 
 

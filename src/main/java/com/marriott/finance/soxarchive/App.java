@@ -10,6 +10,7 @@ import com.marriott.finance.soxarchive.model.Integration;
 import com.marriott.finance.soxarchive.model.Integrations;
 import com.marriott.finance.soxarchive.s3.S3CheckpointStore;
 import com.marriott.finance.soxarchive.s3.S3Uploader;
+import com.marriott.finance.soxarchive.s3.S3Verify;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,12 +53,21 @@ public final class App {
             }
 
             log.info("Loaded configuration: {}", configStr);
+            //call verify
+            
+            S3Verify s3Verify = new S3Verify(config);
+            s3Verify.runVerification();
 
             List<Integration> integrations = Integrations.getAllIntegrations();
             if (integrations == null || integrations.isEmpty()) {
                 log.info("No integrations to process");
                 System.exit(0);
             }
+            if (integrations.size() == 1) {
+				log.info("Found 1 integration to process");
+			} else {
+				log.info("Found {} integrations to process", integrations.size());
+			}
 
             int available = Runtime.getRuntime().availableProcessors();
             int poolSize = Math.max(1, Math.min(Math.min(MAX_PARALLEL_EXECUTIONS, integrations.size()), available));

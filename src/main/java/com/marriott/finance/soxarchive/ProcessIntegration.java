@@ -45,7 +45,6 @@ public final class ProcessIntegration {
     	Instant windowStart = Instant.now()
     	        .minus(Duration.ofDays(INITIALIZE_DAYS))
     	        .truncatedTo(ChronoUnit.HOURS);
-    	Instant now = Instant.now().truncatedTo(ChronoUnit.HOURS);
     	Checkpoint checkpoint = checkpointStore.load(integration.getId());
     	if (checkpoint != null) {
     	    windowStart = checkpoint.lastProcessedTimestamp().truncatedTo(ChronoUnit.HOURS);
